@@ -2,7 +2,6 @@ import datetime
 import pickle
 import random
 import time
-from enum import Enum
 from pathlib import Path
 
 import pandas as pd
@@ -10,9 +9,24 @@ import requests
 import telebot
 from balaboba import Balaboba
 from telebot import types
+import schedule
 
 bot = telebot.TeleBot('5764219780:AAGMJTZxzbPo0fxTuB9tgoXl8BQA1h4nNDA')
 
+
+
+def reset():
+    file_eating = 'eating_list.pkl'
+    with open(file_eating, 'wb') as f:
+        eating_list = {}
+        for i in pd.read_excel('Shablon.xlsx'):
+            if i != 'Расписание':
+                eating_list[i] = 'Сегодня ещё не отмечали'
+        pickle.dump(eating_list, f)
+
+schedule.every().day.at("22:06").do(reset)
+
+now_time = time.time()
 a = time.gmtime()
 clasi = []
 doc = pd.read_excel('Shablon.xlsx')
@@ -21,6 +35,25 @@ for i in doc:
     if i != 'Расписание':
         clasi.append(i)
 
+
+
+
+def update_eating_list(message):
+    if not message.text.isdigit():
+        mes = bot.send_message(message.chat.id, 'Ты чё угараешь?\nЯ число хочу')
+        bot.register_next_step_handler(mes, update_eating_list)
+        return
+    with open(file_reg, 'rb') as f:
+        reg_user = pickle.load(f)
+    with open('eating_list.pkl', 'rb') as g:
+        eating_list = pickle.load(g)
+        eating_list[reg_user[message.from_user.id]] = message.text
+        print(eating_list)
+    with open('eating_list.pkl', 'wb') as g:
+        pickle.dump(eating_list, g)
+    bot.send_message(message.chat.id, f'Отмечено:\n{reg_user[message.from_user.id]}: {eating_list[reg_user[message.from_user.id]]}')
+
+    
 
 def balaboba(message):
     bb = Balaboba()
@@ -32,6 +65,13 @@ def balaboba(message):
     response = bb.balaboba(message.text, intro=intro.number)
     bot.send_message(message.chat.id, response, parse_mode='html')
 
+def check_pass(message):
+    if message.text.lower() == 'отметить':
+        mes = bot.send_message(message.chat.id, 'И сколько человек сегодня едят?')
+        bot.register_next_step_handler(mes, update_eating_list)
+    else:
+        bot.send_message(message.chat.id, 'Не знаешь пароль: не лезь-убьёт!')
+
 
 def main_marks():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -41,11 +81,11 @@ def main_marks():
     menu = types.KeyboardButton("А что будет в столовой?")
     joke = types.KeyboardButton('Давай шутку(бат ин инглиш)')
     change = types.KeyboardButton('Хочу сменить класс:(')
-    markup.add(website, timetable, menu, balabobich, joke, change)
+    check = types.KeyboardButton('Отметить в столовую')
+    check_mean_see = types.KeyboardButton('Кто сегодня кушает?')
+    markup.add(website, timetable, menu, balabobich, joke, change, check, check_mean_see)
     return markup
 
-def clasu(message):
-    return f'{message.chat.id}'
 
 
 def schedule(clas, file):
@@ -67,7 +107,7 @@ def schedule(clas, file):
 def update_user_db(message):
     with open(file_reg, 'rb') as f:
         reg_users = pickle.load(f)
-        reg_users[f'{message.chat.id}'] = f'{message.text}'
+        reg_users[message.from_user.id] = message.text
     with open(file_reg, 'wb') as f:
         pickle.dump(reg_users, f)
 
@@ -94,9 +134,8 @@ RANDOM_CHOISES = ("Понять бы что это значит, давай-ка
 def reg_user(message):
     with open(file_reg, 'rb') as f:
         reg_users = pickle.load(f)
-    if f'{message.chat.id}' in reg_users:
-        main_marks
-        bot.send_message(message.chat.id, 'Привет, чем займёмся!?', parse_mode='html', reply_markup=markup)
+    if message.chat.id in reg_users:
+        bot.send_message(message.chat.id, 'Привет, чем займёмся!?', parse_mode='html', reply_markup=main_marks())
     else:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=8)
         marks = []
@@ -114,7 +153,7 @@ def reg_user(message):
 def get_user_text(message):
     with open(file_reg, 'rb') as f:
         reg_users = pickle.load(f)
-        if f'{message.chat.id}' in reg_users:
+        if message.chat.id in reg_users:
             if message.text.lower() == 'привет':
                 bot.send_message(message.chat.id, f'И тебе привет, <b>{message.from_user.first_name}</b>',
                                     parse_mode='html')
@@ -128,7 +167,7 @@ def get_user_text(message):
                 bot.send_message(message.chat.id, "Вот твоё расписание на завтра:", parse_mode='html')
                 if file == Path():
                     time.sleep(3)
-                bot.send_message(message.chat.id, schedule(f'{reg_users[clasu(message)]}', file), parse_mode='html')
+                bot.send_message(message.chat.id, schedule(message.from_user.id, file), parse_mode='html')
                 if file == today:
                     time.sleep(3)
                     bot.send_message(message.chat.id, 'А, сорян, это на сегодня, на завтра ещё нет', parse_mode='html')
@@ -176,6 +215,18 @@ def get_user_text(message):
                 markup.add(*marks)
                 mes = bot.send_message(message.chat.id, 'Выбирай тогда', reply_markup=markup)
                 bot.register_next_step_handler(mes, change_class)
+            elif message.text == 'Отметить в столовую':
+                mes = bot.send_message(message.chat.id, 'А пароль-то знаешь?')
+                bot.register_next_step_handler(mes, check_pass)
+            elif message.text == 'Кто сегодня кушает?':
+                with open('eating_list.pkl', 'rb') as g:
+                    eating_list = pickle.load(g)
+                result = ''
+                for key, value in eating_list.items():
+                    key = key + ':'
+                    result += f'{key:<4} {value}\n'
+                result = f'<pre>{result}</pre>'
+                bot.send_message(message.chat.id, result, parse_mode='html')
             else:
                 bot.send_message(message.chat.id, random.choice(RANDOM_CHOISES))
         else:

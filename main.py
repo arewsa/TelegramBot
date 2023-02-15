@@ -1,6 +1,7 @@
 import datetime
 import pickle
 import random
+import threading
 import time
 from pathlib import Path
 
@@ -11,8 +12,8 @@ from balaboba import Balaboba
 from telebot import types
 import schedule
 
-bot = telebot.TeleBot('5764219780:AAGMJTZxzbPo0fxTuB9tgoXl8BQA1h4nNDA')
 
+bot = telebot.TeleBot('5764219780:AAGMJTZxzbPo0fxTuB9tgoXl8BQA1h4nNDA')
 
 
 def reset():
@@ -24,7 +25,6 @@ def reset():
                 eating_list[i] = 'Сегодня ещё не отмечали'
         pickle.dump(eating_list, f)
 
-schedule.every().day.at("22:06").do(reset)
 
 now_time = time.time()
 a = time.gmtime()
@@ -36,11 +36,22 @@ for i in doc:
         clasi.append(i)
 
 
+def run_threaded(job_func):
+    job_thread = threading.Thread(target=job_func)
+    job_thread.start()
+
+
+def run_schedule():
+    schedule.every().day.at('15:16').do(reset)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
 
 def update_eating_list(message):
     if not message.text.isdigit():
-        mes = bot.send_message(message.chat.id, 'Ты чё угараешь?\nЯ число хочу')
+        mes = bot.send_message(
+            message.chat.id, 'Ты чё угараешь?\nЯ число хочу')
         bot.register_next_step_handler(mes, update_eating_list)
         return
     with open(file_reg, 'rb') as f:
@@ -51,9 +62,9 @@ def update_eating_list(message):
         print(eating_list)
     with open('eating_list.pkl', 'wb') as g:
         pickle.dump(eating_list, g)
-    bot.send_message(message.chat.id, f'Отмечено:\n{reg_user[message.from_user.id]}: {eating_list[reg_user[message.from_user.id]]}')
+    bot.send_message(
+        message.chat.id, f'Отмечено:\n{reg_user[message.from_user.id]}: {eating_list[reg_user[message.from_user.id]]}')
 
-    
 
 def balaboba(message):
     bb = Balaboba()
@@ -65,9 +76,11 @@ def balaboba(message):
     response = bb.balaboba(message.text, intro=intro.number)
     bot.send_message(message.chat.id, response, parse_mode='html')
 
+
 def check_pass(message):
     if message.text.lower() == 'отметить':
-        mes = bot.send_message(message.chat.id, 'И сколько человек сегодня едят?')
+        mes = bot.send_message(
+            message.chat.id, 'И сколько человек сегодня едят?')
         bot.register_next_step_handler(mes, update_eating_list)
     else:
         bot.send_message(message.chat.id, 'Не знаешь пароль: не лезь-убьёт!')
@@ -83,12 +96,12 @@ def main_marks():
     change = types.KeyboardButton('Хочу сменить класс:(')
     check = types.KeyboardButton('Отметить в столовую')
     check_mean_see = types.KeyboardButton('Кто сегодня кушает?')
-    markup.add(website, timetable, menu, balabobich, joke, change, check, check_mean_see)
+    markup.add(website, timetable, menu, balabobich,
+               joke, change, check, check_mean_see)
     return markup
 
 
-
-def schedule(clas, file):
+def output_schedule(clas, file):
     if not file.is_file():
         return 'Извините пожалуйста, расписание отсутствует, все вопросы к Администрации школы!'
     dos = pd.read_excel(file)
@@ -104,6 +117,7 @@ def schedule(clas, file):
         result = f'<pre>{result}</pre>'
     return result
 
+
 def update_user_db(message):
     with open(file_reg, 'rb') as f:
         reg_users = pickle.load(f)
@@ -111,17 +125,19 @@ def update_user_db(message):
     with open(file_reg, 'wb') as f:
         pickle.dump(reg_users, f)
 
+
 def registration(message):
     update_user_db(message)
-    bot.send_message(message.chat.id, f'Теперь ты в {message.text} классе', parse_mode='html', reply_markup=main_marks())
-    bot.send_message(message.chat.id, 'Чего хочешь?')    
+    bot.send_message(
+        message.chat.id, f'Теперь ты в {message.text} классе', parse_mode='html', reply_markup=main_marks())
+    bot.send_message(message.chat.id, 'Чего хочешь?')
+
 
 def change_class(message):
     update_user_db(message)
-    bot.send_message(message.chat.id, f'Теперь ты в {message.text} классе', parse_mode='html', reply_markup=main_marks())
+    bot.send_message(
+        message.chat.id, f'Теперь ты в {message.text} классе', parse_mode='html', reply_markup=main_marks())
     bot.send_message(message.chat.id, 'Чего теперь?')
-
-
 
 
 RANDOM_CHOISES = ("Понять бы что это значит, давай-ка проверь что написал!",
@@ -135,7 +151,8 @@ def reg_user(message):
     with open(file_reg, 'rb') as f:
         reg_users = pickle.load(f)
     if message.chat.id in reg_users:
-        bot.send_message(message.chat.id, 'Привет, чем займёмся!?', parse_mode='html', reply_markup=main_marks())
+        bot.send_message(message.chat.id, 'Привет, чем займёмся!?',
+                         parse_mode='html', reply_markup=main_marks())
     else:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=8)
         marks = []
@@ -144,9 +161,9 @@ def reg_user(message):
         markup.add(*marks)
         bot.send_message(message.chat.id,
                          f'Приветствую {message.from_user.first_name}, давай узнаем в каком ты классе!')
-        mes = bot.send_message(message.chat.id, 'Выбирай свой класс', reply_markup=markup)
+        mes = bot.send_message(
+            message.chat.id, 'Выбирай свой класс', reply_markup=markup)
         bot.register_next_step_handler(mes, registration)
-
 
 
 @bot.message_handler(content_types=["text"])
@@ -156,26 +173,32 @@ def get_user_text(message):
         if message.chat.id in reg_users:
             if message.text.lower() == 'привет':
                 bot.send_message(message.chat.id, f'И тебе привет, <b>{message.from_user.first_name}</b>',
-                                    parse_mode='html')
+                                 parse_mode='html')
             elif message.text == 'id':
                 bot.send_message(message.chat.id, message, parse_mode='html')
             elif message.text == 'Хочу расписание':
                 shediki = Path('shedule')
-                tomorrow = shediki / f'{datetime.datetime.strftime(datetime.datetime.now() + datetime.timedelta(days=1), "%d.%m.%Y")}.xlsx'
-                today = shediki / f'{datetime.datetime.strftime(datetime.datetime.now(), "%d.%m.%Y")}.xlsx'
+                tomorrow = shediki / \
+                    f'{datetime.datetime.strftime(datetime.datetime.now() + datetime.timedelta(days=1), "%d.%m.%Y")}.xlsx'
+                today = shediki / \
+                    f'{datetime.datetime.strftime(datetime.datetime.now(), "%d.%m.%Y")}.xlsx'
                 file = tomorrow if tomorrow.is_file() else today if today.is_file() else Path()
-                bot.send_message(message.chat.id, "Вот твоё расписание на завтра:", parse_mode='html')
+                bot.send_message(
+                    message.chat.id, "Вот твоё расписание на завтра:", parse_mode='html')
                 if file == Path():
                     time.sleep(3)
-                bot.send_message(message.chat.id, schedule(message.from_user.id, file), parse_mode='html')
+                bot.send_message(message.chat.id, output_schedule(
+                    message.from_user.id, file), parse_mode='html')
                 if file == today:
                     time.sleep(3)
-                    bot.send_message(message.chat.id, 'А, сорян, это на сегодня, на завтра ещё нет', parse_mode='html')
+                    bot.send_message(
+                        message.chat.id, 'А, сорян, это на сегодня, на завтра ещё нет', parse_mode='html')
             elif message.text == "Электронный Дневник":
                 markup1 = types.InlineKeyboardMarkup()
                 markup1.add(
                     types.InlineKeyboardButton("Открыть Электронный дневник", url="https://edu.tatar.ru/logon"))
-                bot.send_message(message.chat.id, "Надеюсь там одни пятёрки:)", reply_markup=markup1)
+                bot.send_message(
+                    message.chat.id, "Надеюсь там одни пятёрки:)", reply_markup=markup1)
             elif message.text == "А что будет в столовой?":
                 bot.send_message(message.chat.id, "Погоди, сейчас узнаем")
                 time.sleep(3)
@@ -185,17 +208,17 @@ def get_user_text(message):
                 bot.send_photo(message.chat.id, photo_menu)
             elif message.text == "Давай сделаем текст":
                 bot.send_message(message.chat.id, "Смотри, пиши начало своего текста, а потом тебе отдадут конец",
-                                    parse_mode='html')
+                                 parse_mode='html')
                 bot.send_message(message.chat.id,
-                                    "Но знай, тут всё не идеально, если будет что то странное, просто смейся и пробуй заново!",
-                                    parse_mode='html')
+                                 "Но знай, тут всё не идеально, если будет что то странное, просто смейся и пробуй заново!",
+                                 parse_mode='html')
                 mes = bot.send_message(message.chat.id,
-                                    "А, точно, когда напишешь, жди, он думает, чисто на мысле",
-                                    parse_mode='html')
+                                       "А, точно, когда напишешь, жди, он думает, чисто на мысле",
+                                       parse_mode='html')
                 bot.register_next_step_handler(mes, balaboba)
             elif message.text == 'ты лох':
                 bot.send_sticker(message.chat.id,
-                                    'CAACAgIAAxkBAAEHoRJj4pG-t7cLLekXTFeRx3TICJ3CPAACgBYAAtpaGUj4uq5mLvVLZi4E')
+                                 'CAACAgIAAxkBAAEHoRJj4pG-t7cLLekXTFeRx3TICJ3CPAACgBYAAtpaGUj4uq5mLvVLZi4E')
             elif message.text == 'Давай шутку(бат ин инглиш)':
                 url = "https://official-joke-api.appspot.com/random_joke"
                 response = requests.get(url)
@@ -208,12 +231,14 @@ def get_user_text(message):
                 text.append(answer)
                 bot.send_message(message.chat.id, '\n'.join(text))
             elif message.text == ('Хочу сменить класс:('):
-                markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=8)
+                markup = types.ReplyKeyboardMarkup(
+                    resize_keyboard=True, row_width=8)
                 marks = []
                 for g in clasi:
                     marks.append(types.KeyboardButton(f'{g}'))
                 markup.add(*marks)
-                mes = bot.send_message(message.chat.id, 'Выбирай тогда', reply_markup=markup)
+                mes = bot.send_message(
+                    message.chat.id, 'Выбирай тогда', reply_markup=markup)
                 bot.register_next_step_handler(mes, change_class)
             elif message.text == 'Отметить в столовую':
                 mes = bot.send_message(message.chat.id, 'А пароль-то знаешь?')
@@ -228,13 +253,19 @@ def get_user_text(message):
                 result = f'<pre>{result}</pre>'
                 bot.send_message(message.chat.id, result, parse_mode='html')
             else:
-                bot.send_message(message.chat.id, random.choice(RANDOM_CHOISES))
+                bot.send_message(
+                    message.chat.id, random.choice(RANDOM_CHOISES))
         else:
             reg_user(message)
 
+
 @bot.message_handler(content_types=["photo"])
 def get_user_photo(message):
-    bot.send_message(message.chat.id, "Ну да, используй меня как склад фото, да да, пожалуйста", parse_mode="html")
+    bot.send_message(
+        message.chat.id, "Ну да, используй меня как склад фото, да да, пожалуйста", parse_mode="html")
+
+
+run_threaded(run_schedule)
 
 
 bot.polling(none_stop=True)

@@ -42,7 +42,7 @@ def run_threaded(job_func):
 
 
 def run_schedule():
-    schedule.every().day.at('15:16').do(reset)
+    schedule.every().day.at('00:00').do(reset)
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -59,7 +59,6 @@ def update_eating_list(message):
     with open('eating_list.pkl', 'rb') as g:
         eating_list = pickle.load(g)
         eating_list[reg_user[message.from_user.id]] = message.text
-        print(eating_list)
     with open('eating_list.pkl', 'wb') as g:
         pickle.dump(eating_list, g)
     bot.send_message(

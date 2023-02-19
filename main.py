@@ -19,18 +19,13 @@ bot = telebot.TeleBot('5764219780:AAGMJTZxzbPo0fxTuB9tgoXl8BQA1h4nNDA')
 
 
 gauth = GoogleAuth()
-# Try to load saved client credentials
 gauth.LoadCredentialsFile("mycreds.txt")
 if gauth.credentials is None:
-    # Authenticate if they're not there
     gauth.LocalWebserverAuth()
 elif gauth.access_token_expired:
-    # Refresh them if expired
     gauth.Refresh()
 else:
-    # Initialize the saved creds
     gauth.Authorize()
-# Save the current credentials to a file
 gauth.SaveCredentialsFile("mycreds.txt")
 drive = GoogleDrive(gauth)
 

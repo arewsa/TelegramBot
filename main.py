@@ -91,6 +91,14 @@ def update_eating_list(message):
         message.chat.id, f'Отмечено:\n{reg_user[message.from_user.id]}: {eating_list[reg_user[message.from_user.id]]}')
 
 
+def print_menu(menu):
+    main_menu = pd.read_excel(menu)['Меню']
+    result = ''
+    for i in range(len(main_menu)):
+        result += f'{(i+1)}. {main_menu[i]}\n'
+    return result
+
+
 def balaboba(message):
     bb = Balaboba()
 
@@ -226,11 +234,14 @@ def get_user_text(message):
                     message.chat.id, "Надеюсь там одни пятёрки:)", reply_markup=markup1)
             elif message.text == "А что будет в столовой?":
                 bot.send_message(message.chat.id, "Погоди, сейчас узнаем")
-                time.sleep(3)
-                bot.send_message(message.chat.id, "Дело сделано")
-                time.sleep(1)
-                photo_menu = open("ccf7a86d37854b4e911c67a6d10c024b.jpg", 'rb')
-                bot.send_photo(message.chat.id, photo_menu)
+                time.sleep(2)
+                menu = Path('shedule') / f'{datetime.datetime.strftime(datetime.datetime.now(), "%d.%m.%Y")}m.xlsx'
+                if not menu.is_file():
+                    bot.send_message(message.chat.id, 'Слушай, может сегодня не кушаешь, а может не сказали что кушаешь, но я не знаю')
+                else:
+                    bot.send_message(message.chat.id, "Дело сделано")
+                    time.sleep(1)
+                    bot.send_message(message.chat.id, print_menu(menu))
             elif message.text == "Давай сделаем текст":
                 bot.send_message(message.chat.id, "Смотри, пиши начало своего текста, а потом тебе отдадут конец",
                                  parse_mode='html')

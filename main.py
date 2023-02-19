@@ -68,7 +68,7 @@ def install_folder():
 
 def run_schedule():
     schedule.every().day.at('00:00').do(reset)
-    schedule.every(10).seconds.do(install_folder)
+    schedule.every(10).minutes.do(install_folder)
     while True:
         schedule.run_pending()
         time.sleep(1)

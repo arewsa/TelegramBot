@@ -5,6 +5,8 @@ import threading
 import time
 from pathlib import Path
 
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 import pandas as pd
 import requests
 import telebot
@@ -14,6 +16,23 @@ import schedule
 
 
 bot = telebot.TeleBot('5764219780:AAGMJTZxzbPo0fxTuB9tgoXl8BQA1h4nNDA')
+
+
+gauth = GoogleAuth()
+# Try to load saved client credentials
+gauth.LoadCredentialsFile("mycreds.txt")
+if gauth.credentials is None:
+    # Authenticate if they're not there
+    gauth.LocalWebserverAuth()
+elif gauth.access_token_expired:
+    # Refresh them if expired
+    gauth.Refresh()
+else:
+    # Initialize the saved creds
+    gauth.Authorize()
+# Save the current credentials to a file
+gauth.SaveCredentialsFile("mycreds.txt")
+drive = GoogleDrive(gauth)
 
 
 def reset():
@@ -40,9 +59,16 @@ def run_threaded(job_func):
     job_thread = threading.Thread(target=job_func)
     job_thread.start()
 
+def install_folder():
+    file_list = drive.ListFile({'q': "'1RZxfvg7mvBMb-lozg8NuWbKwslQ2hQVl' in parents and trashed=false"}).GetList()
+    for file1 in file_list:
+        shedules = Path('shedule') /file1['title']
+        if not shedules.is_file():
+            file1.GetContentFile(str(shedules))
 
 def run_schedule():
     schedule.every().day.at('00:00').do(reset)
+    schedule.every(10).seconds.do(install_folder)
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -52,6 +78,11 @@ def update_eating_list(message):
     if not message.text.isdigit():
         mes = bot.send_message(
             message.chat.id, 'Ты чё угараешь?\nЯ число хочу')
+        bot.register_next_step_handler(mes, update_eating_list)
+        return
+    if int(message.text) > 40:
+        mes = bot.send_message(
+            message.chat.id, 'Ты чё угараешь?\nЧё так много')
         bot.register_next_step_handler(mes, update_eating_list)
         return
     with open(file_reg, 'rb') as f:
@@ -187,7 +218,7 @@ def get_user_text(message):
                 if file == Path():
                     time.sleep(3)
                 bot.send_message(message.chat.id, output_schedule(
-                    message.from_user.id, file), parse_mode='html')
+                    reg_users[message.from_user.id], file), parse_mode='html')
                 if file == today:
                     time.sleep(3)
                     bot.send_message(
@@ -265,6 +296,7 @@ def get_user_photo(message):
 
 
 run_threaded(run_schedule)
+
 
 
 bot.polling(none_stop=True)
